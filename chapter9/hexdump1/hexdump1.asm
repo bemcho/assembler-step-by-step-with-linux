@@ -58,9 +58,6 @@ Scan:
 	xor rax,rax		; Clear eax to 0
 ; Here we calculate the offset into HexStr, which is the value in rcx X 3
 	lea rdx, [rcx*3]
-; Copy the character counter into edx
-	
-
 ; Get a character from the buffer and put it in both eax and ebx:
 	mov al, byte [rsi+rcx]	; Put a byte from the input buffer into al
 	mov rbx,rax		; Duplicate the byte in bl for second nybble
