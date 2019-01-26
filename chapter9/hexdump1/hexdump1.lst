@@ -50,60 +50,59 @@
     43 00000015 BA10000000              	mov rdx,BUFFLEN		; Pass number of bytes to read at one pass
     44 0000001A 0F05                    	syscall			; Call sys_read to fill the buffer
     45                                  
-    46 0000001C 4989C3                  	mov r11,rax		; Copy sys_read return value for safekeeping
-    47 0000001F 4883F800                	cmp rax,0		; If eax=0, sys_read reached EOF on stdin
-    48 00000023 7467                    	je Done			; Jump If Equal (to 0, from compare)
-    49                                  
+    46                                  
+    47 0000001C 4989C3                  	mov r11,rax		; Copy sys_read return value for safekeeping
+    48 0000001F 4883F800                	cmp rax,0		; If eax=0, sys_read reached EOF on stdin
+    49 00000023 745A                    	je Done			; Jump If Equal (to 0, from compare)
     50                                  
     51                                  
-    52                                  ; Set up the registers for the process buffer step:
-    53 00000025 48BF-                   	mov rdi,HexStr		; Place address of line string into rdi
-    53 00000027 [0000000000000000] 
-    54 0000002F 4831C9                  	xor rcx,rcx		; Clear line string pointer to 0
-    55 00000032 4831D2                  	xor rdx,rdx
+    52                                  
+    53                                  ; Set up the registers for the process buffer step:
+    54 00000025 48BF-                   	mov rdi,HexStr		; Place address of line string into rdi
+    54 00000027 [0000000000000000] 
+    55 0000002F 4831C9                  	xor rcx,rcx		; Clear line string pointer to 0
     56                                  ; Go through the buffer and convert binary values to hex digits:
     57                                  Scan:
-    58 00000035 4831C0                  	xor rax,rax		; Clear eax to 0
+    58 00000032 4831C0                  	xor rax,rax		; Clear eax to 0
     59                                  ; Here we calculate the offset into HexStr, which is the value in ecx X 3
-    60                                  	
-    61                                  ; Copy the character counter into edx
-    62                                  	
-    63                                  
-    64                                  ; Get a character from the buffer and put it in both eax and ebx:
-    65 00000038 8A040E                  	mov al, byte [rsi+rcx]	; Put a byte from the input buffer into al
-    66 0000003B 4889C3                  	mov rbx,rax		; Duplicate the byte in bl for second nybble
-    67                                  
-    68                                  ; Look up low nybble character and insert it into the string:
-    69 0000003E 240F                    	and al,0Fh		   ; Mask out all but the low nybble
-    70 00000040 8A80[31000000]          	mov al,byte [Digits+rax]   ; Look up the char equivalent of nybble
-    71 00000046 8882[02000000]          	mov byte [HexStr+rdx+2],al ; Write the char equivalent to line string
-    72                                  
-    73                                  ; Look up high nybble character and insert it into the string:
-    74 0000004C C0EB04                  	shr bl,4		; Shift high 4 bits of char into low 4 bits
-    75 0000004F 8A9B[31000000]          	mov bl,byte [Digits+rbx] ; Look up char equivalent of nybble
-    76 00000055 889A[01000000]          	mov byte [HexStr+rdx+1],bl ; Write the char equivalent to line string
-    77                                  
-    78                                  ; Bump the buffer pointer to the next character and see if we're done:
-    79 0000005B 48FFC1                  	inc rcx		; Increment line string pointer
-    80 0000005E 48FFC2                  	inc rdx		;
-    81 00000061 48FFC2                  	inc rdx
-    82 00000064 48FFC2                  	inc rdx
-    83 00000067 4C39D9                  	cmp rcx,r11	; Compare to the number of characters in the buffer
-    84 0000006A 76C9                    	jna Scan	; Loop back if ecx is <= number of chars in buffer
-    85                                  
-    86                                  								; Write the line of hexadecimal values to stdout:
-    87                                  Write:	
-    88 0000006C B801000000              	mov rax,1		; Specify sys_write call
-    89 00000071 BF01000000              	mov rdi,1		; Specify File Descriptor 1: Standard output
-    90 00000076 48BE-                   	mov rsi,HexStr		; Pass offset of line string
-    90 00000078 [0000000000000000] 
-    91 00000080 BA31000000              	mov rdx,HEXLEN		; Pass size of the line string
-    92 00000085 0F05                    	syscall
-    93                                  								; Make kernel call to display line string
-    94 00000087 E975FFFFFF              	jmp Read		; Loop back and load file buffer again
-    95                                  
-    96                                  ; All done! Let's end this party:
-    97                                  Done:
-    98 0000008C B83C000000              	mov rax,60		; Code for Exit Syscall
-    99 00000091 BF00000000              	mov rdi,0		; Return a code of zero	
-   100 00000096 0F05                    	syscall			; Make kernel call
+    60                                  ;	mov rdx,rcx
+    61                                  ;	shl rdx, 2
+    62                                  ;	add rdx,rcx	
+    63                                  ; Copy the character counter into edx
+    64                                  	
+    65                                  
+    66                                  ; Get a character from the buffer and put it in both eax and ebx:
+    67 00000035 8A040E                  	mov al, byte [rsi+rcx]	; Put a byte from the input buffer into al
+    68 00000038 4889C3                  	mov rbx,rax		; Duplicate the byte in bl for second nybble
+    69                                  
+    70                                  ; Look up low nybble character and insert it into the string:
+    71 0000003B 240F                    	and al,0Fh		   ; Mask out all but the low nybble
+    72 0000003D 8A80[31000000]          	mov al,byte [Digits+rax]   ; Look up the char equivalent of nybble
+    73 00000043 888452[02000000]        	mov byte [HexStr+(rdx*3)+2],al ; Write the char equivalent to line string
+    74                                  
+    75                                  ; Look up high nybble character and insert it into the string:
+    76 0000004A C0EB04                  	shr bl,4		; Shift high 4 bits of char into low 4 bits
+    77 0000004D 8A9B[31000000]          	mov bl,byte [Digits+rbx] ; Look up char equivalent of nybble
+    78 00000053 889C52[01000000]        	mov byte [HexStr+(rdx*3)+1],bl ; Write the char equivalent to line string
+    79                                  
+    80                                  ; Bump the buffer pointer to the next character and see if we're done:
+    81 0000005A 48FFC1                  	inc rcx		; Increment line string pointer
+    82 0000005D 4C39D9                  	cmp rcx,r11	; Compare to the number of characters in the buffer
+    83 00000060 76D0                    	jna Scan	; Loop back if ecx is <= number of chars in buffer
+    84                                  
+    85                                  								; Write the line of hexadecimal values to stdout:
+    86                                  Write:	
+    87 00000062 B801000000              	mov rax,1		; Specify sys_write call
+    88 00000067 BF01000000              	mov rdi,1		; Specify File Descriptor 1: Standard output
+    89 0000006C 48BE-                   	mov rsi,HexStr		; Pass offset of line string
+    89 0000006E [0000000000000000] 
+    90 00000076 BA31000000              	mov rdx,HEXLEN		; Pass size of the line string
+    91 0000007B 0F05                    	syscall
+    92                                  								; Make kernel call to display line string
+    93 0000007D EB82                    	jmp Read		; Loop back and load file buffer again
+    94                                  
+    95                                  ; All done! Let's end this party:
+    96                                  Done:
+    97 0000007F B83C000000              	mov rax,60		; Code for Exit Syscall
+    98 00000084 BF00000000              	mov rdi,0		; Return a code of zero	
+    99 00000089 0F05                    	syscall			; Make kernel call

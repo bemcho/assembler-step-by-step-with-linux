@@ -43,6 +43,7 @@ Read:
 	mov rdx,BUFFLEN		; Pass number of bytes to read at one pass
 	syscall			; Call sys_read to fill the buffer
 
+
 	mov r11,rax		; Copy sys_read return value for safekeeping
 	cmp rax,0		; If eax=0, sys_read reached EOF on stdin
 	je Done			; Jump If Equal (to 0, from compare)
@@ -52,12 +53,13 @@ Read:
 ; Set up the registers for the process buffer step:
 	mov rdi,HexStr		; Place address of line string into rdi
 	xor rcx,rcx		; Clear line string pointer to 0
-	xor rdx,rdx
 ; Go through the buffer and convert binary values to hex digits:
 Scan:
 	xor rax,rax		; Clear eax to 0
 ; Here we calculate the offset into HexStr, which is the value in ecx X 3
-	
+;	mov rdx,rcx
+;	shl rdx, 2
+;	add rdx,rcx	
 ; Copy the character counter into edx
 	
 
@@ -68,18 +70,15 @@ Scan:
 ; Look up low nybble character and insert it into the string:
 	and al,0Fh		   ; Mask out all but the low nybble
 	mov al,byte [Digits+rax]   ; Look up the char equivalent of nybble
-	mov byte [HexStr+rdx+2],al ; Write the char equivalent to line string
+	mov byte [HexStr+(rdx*3)+2],al ; Write the char equivalent to line string
 
 ; Look up high nybble character and insert it into the string:
 	shr bl,4		; Shift high 4 bits of char into low 4 bits
 	mov bl,byte [Digits+rbx] ; Look up char equivalent of nybble
-	mov byte [HexStr+rdx+1],bl ; Write the char equivalent to line string
+	mov byte [HexStr+(rdx*3)+1],bl ; Write the char equivalent to line string
 
 ; Bump the buffer pointer to the next character and see if we're done:
 	inc rcx		; Increment line string pointer
-	inc rdx		; 
-	inc rdx		; Increment to the next(00 + inreval) slot in HexString	
-	inc rdx		;
 	cmp rcx,r11	; Compare to the number of characters in the buffer
 	jna Scan	; Loop back if ecx is <= number of chars in buffer
 
