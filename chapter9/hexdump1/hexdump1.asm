@@ -56,10 +56,10 @@ Read:
 ; Go through the buffer and convert binary values to hex digits:
 Scan:
 	xor rax,rax		; Clear eax to 0
-; Here we calculate the offset into HexStr, which is the value in ecx X 3
-;	mov rdx,rcx
-;	shl rdx, 2
-;	add rdx,rcx	
+; Here we calculate the offset into HexStr, which is the value in rcx X 3
+	mov rdx,rcx
+	lea rdx, [rcx*3]
+
 ; Copy the character counter into edx
 	
 
@@ -70,12 +70,12 @@ Scan:
 ; Look up low nybble character and insert it into the string:
 	and al,0Fh		   ; Mask out all but the low nybble
 	mov al,byte [Digits+rax]   ; Look up the char equivalent of nybble
-	mov byte [HexStr+(rdx*3)+2],al ; Write the char equivalent to line string
+	mov byte [HexStr+rdx+2],al ; Write the char equivalent to line string
 
 ; Look up high nybble character and insert it into the string:
 	shr bl,4		; Shift high 4 bits of char into low 4 bits
 	mov bl,byte [Digits+rbx] ; Look up char equivalent of nybble
-	mov byte [HexStr+(rdx*3)+1],bl ; Write the char equivalent to line string
+	mov byte [HexStr+rdx+1],bl ; Write the char equivalent to line string
 
 ; Bump the buffer pointer to the next character and see if we're done:
 	inc rcx		; Increment line string pointer
