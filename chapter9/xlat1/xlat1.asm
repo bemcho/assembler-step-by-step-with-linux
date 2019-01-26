@@ -7,8 +7,8 @@
 ;    demonstrating the use of the XLAT instruction to alter text streams.
 ;
 ;  Build using these commands:
-;    nasm -f elf -g -F stabs xlat1.asm
-;    ld -o xlat1 xlat1.o
+;    nasm -f elf64 -g -F dwarf xlat1.asm -l xlat.lst
+;    ld -g -o xlat1 xlat1.o
 ;
 
 SECTION .data			; Section containing initialised data

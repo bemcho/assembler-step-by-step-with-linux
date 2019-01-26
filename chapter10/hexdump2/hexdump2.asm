@@ -7,8 +7,8 @@
 ;			assembly language procedures
 ;
 ;  Build using these commands:
-;    nasm -f elf -g -F stabs hexdump2.asm
-;    ld -o hexdump2 hexdump2.o 
+;    nasm -f elf64 -g -F dwarf hexdump2.asm -l hexdump2.lst
+;    ld -g -o hexdump2 hexdump2.o 
 ;
 
 SECTION .bss			; Section containing uninitialized data
@@ -74,13 +74,15 @@ SECTION .text			; Section containing code
 ;		calling DumpChar 16 times, passing it 0 each time.
 
 ClearLine:
-	pushad		; Save all caller's GP registers
+	push rdx
+	push rax 		; Save all caller's GP registers
 	mov edx,15	; We're going to go 16 pokes, counting from 0
 .poke:	mov eax,0	; Tell DumpChar to poke a '0'
 	call DumpChar	; Insert the '0' into the hex dump string
 	sub edx,1	; DEC doesn't affect CF!
 	jae .poke	; Loop back if EDX >= 0
-	popad		; Restore all caller's GP registers
+	pop rax
+	pop rdx		; Restore all caller's GP registers
 	ret		; Go home
 
 
@@ -98,8 +100,8 @@ ClearLine:
 ;		printable character.
 
 DumpChar:
-	push ebx		; Save caller's EBX
-	push edi		; Save caller's EDI
+	push rbx		; Save caller's EBX
+	push rdi		; Save caller's EDI
 ; First we insert the input char into the ASCII portion of the dump line
 	mov bl,byte [DotXlat+eax]	; Translate nonprintables to '.'
 	mov byte [ASCLin+edx+1],bl	; Write to ASCII portion
@@ -117,8 +119,8 @@ DumpChar:
 	mov bl,byte [HexDigits+ebx] ; Look up char equiv. of nybble
 	mov byte [DumpLin+edi+1],bl ; Write the char equiv. to line string
 ;Done! Let's go home:
-	pop edi			; Restore caller's EDI
-	pop ebx			; Restore caller's EBX
+	pop rdi			; Restore caller's EDI
+	pop rbx			; Restore caller's EBX
 	ret			; Return to caller
 
 
@@ -133,13 +135,20 @@ DumpChar:
 ; 		using INT 80h sys_write. All GP registers are preserved.
 
 PrintLine:
-	pushad		  ; Save all caller's GP registers
+	push rax		  ; Save all caller's GP registers
+	push rbx
+	push rcx
+	push rdx
 	mov eax,4	  ; Specify sys_write call
 	mov ebx,1	  ; Specify File Descriptor 1: Standard output
 	mov ecx,DumpLin	  ; Pass offset of line string
 	mov edx,FULLLEN	  ; Pass size of the line string
 	int 80h		  ; Make kernel call to display line string
-	popad		  ; Restore all caller's GP registers
+	pop rdx		  ; Restore all caller's GP registers
+	pop rcx
+	pop rbx
+	pop rax
+
 	ret		  ; Return to caller
 
 
@@ -158,9 +167,9 @@ PrintLine:
 ;		Less than 0 in EBP on return indicates some kind of error.
 
 LoadBuff:
-	push eax	  ; Save caller's EAX
-	push ebx	  ; Save caller's EBX
-	push edx	  ; Save caller's EDX
+	push rax	  ; Save caller's EAX
+	push rbx	  ; Save caller's EBX
+	push rdx	  ; Save caller's EDX
 	mov eax,3	  ; Specify sys_read call
 	mov ebx,0	  ; Specify File Descriptor 0: Standard Input
 	mov ecx,Buff	  ; Pass offset of the buffer to read to
@@ -168,9 +177,9 @@ LoadBuff:
 	int 80h		  ; Call sys_read to fill the buffer
 	mov ebp,eax	  ; Save # of bytes read from file for later
 	xor ecx,ecx	  ; Clear buffer pointer ECX to 0
-	pop edx		  ; Restore caller's EDX
-	pop ebx		  ; Restore caller's EBX
-	pop eax		  ; Restore caller's EAX
+	pop rdx		  ; Restore caller's EDX
+	pop rbx		  ; Restore caller's EBX
+	pop rax		  ; Restore caller's EAX
 	ret		  ; And return to caller
 
 
