@@ -1,0 +1,19 @@
+     1                                  section .data
+     2 00000000 4B414E4741524F4F        	Snippet	db "KANGAROO"
+     3 00000008 08                      	Snippet_len db $-Snippet
+     4                                  
+     5                                  section .text
+     6                                  	global	_start
+     7                                  _start:
+     8 00000000 90                      	nop
+     9                                  ; Put your experiments between the two nops...
+    10                                  
+    11 00000001 BB[00000000]            	mov ebx,Snippet
+    12 00000006 B8[08000000]            	mov eax,Snippet_len
+    13 0000000B 67800320                DoMore:	add byte [ebx],32
+    14 0000000F FFC3                    	inc ebx
+    15 00000011 FFC8                    	dec eax
+    16 00000013 75F6                    	jnz DoMore
+    17                                  	
+    18                                  ; Put your experiments between the two nops...
+    19 00000015 90                      	nop

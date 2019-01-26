@@ -1,0 +1,80 @@
+     1                                  ;  Executable name : uppercaser2
+     2                                  ;  Version         : 1.0
+     3                                  ;  Created date    : 3/25/2009
+     4                                  ;  Last update     : 3/25/2009
+     5                                  ;  Author          : Jeff Duntemann
+     6                                  ;  Description     : A simple program in assembly for Linux, using NASM 2.05,
+     7                                  ;    demonstrating simple text file I/O (through redirection) for reading an
+     8                                  ;    input file to a buffer in blocks, forcing lowercase characters to 
+     9                                  ;    uppercase, and writing the modified buffer to an output file.
+    10                                  ;
+    11                                  ;  Run it this way:
+    12                                  ;    uppercaser2 > (output file) < (input file)  
+    13                                  ;
+    14                                  ;  Build using these commands:
+    15                                  ;    nasm -f elf -g -F stabs uppercaser2.asm
+    16                                  ;    ld -o uppercaser2 uppercaser2.o
+    17                                  ;
+    18                                  SECTION .bss			; Section containing uninitialized data
+    19                                  
+    20                                  	BUFFLEN	equ 1024	; Length of buffer
+    21 00000000 <res 00000400>          	Buff: 	resb BUFFLEN	; Text buffer itself
+    22                                  	
+    23                                  SECTION .data			; Section containing initialised data
+    24                                  
+    25                                  SECTION .text			; Section containing code
+    26                                  
+    27                                  global 	_start			; Linker needs this to find the entry point!
+    28                                  	
+    29                                  _start:
+    30 00000000 90                      	nop			; This no-op keeps gdb happy...
+    31                                  
+    32                                  ; Read a buffer full of text from stdin:
+    33                                  read:
+    34                                  
+    35 00000001 B800000000              	mov rax,0		; Specify sys_read call
+    36 00000006 BF00000000              	mov rdi,0		; Specify File Descriptor 0: Standard Input
+    37 0000000B 48BE-                   	mov rsi,Buff		; Pass offset of the buffer to read to
+    37 0000000D [0000000000000000] 
+    38 00000015 BA00040000              	mov rdx,BUFFLEN		; Pass number of bytes to read at one pass
+    39 0000001A 0F05                    	syscall			; Call sys_read to fill the buffer
+    40                                  
+    41                                  	
+    42 0000001C 4889C3                  	mov rbx,rax		; Copy sys_read return value for safekeeping
+    43 0000001F 4883F800                	cmp rax,0		; If eax=0, sys_read reached EOF on stdin
+    44 00000023 7443                    	je Done			; Jump If Equal (to 0, from compare)
+    45                                  
+    46                                  ; Set up the registers for the process buffer step:
+    47                                       
+    48 00000025 4889D9                  	mov rcx,rbx		; Place the number of bytes read into ecx
+    49 00000028 48BD-                   	mov rbp,Buff		; Place address of buffer into ebp
+    49 0000002A [0000000000000000] 
+    50 00000032 48FFCD                  	dec rbp			; Adjust count to offset
+    51                                  
+    52                                  ; Go through the buffer and convert lowercase to uppercase characters:
+    53                                  Scan:
+    54 00000035 807C0D0061              	cmp byte [rbp+rcx],61h	; Test input char against lowercase 'a'
+    55 0000003A 720C                    	jb Next			; If below 'a' in ASCII, not lowercase
+    56 0000003C 807C0D007A              	cmp byte [rbp+rcx],7Ah	; Test input char against lowercase 'z'
+    57 00000041 7705                    	ja Next			; If above 'z' in ASCII, not lowercase
+    58                                  				; At this point, we have a lowercase char
+    59 00000043 806C0D0020              	sub byte [rbp+rcx],20h	; Subtract 20h to give uppercase...
+    60 00000048 48FFC9                  Next:	dec rcx			; Decrement counter
+    61 0000004B 75E8                    	jnz Scan		; If characters remain, loop back
+    62                                  
+    63                                  ; Write the buffer full of processed text to stdout:
+    64                                  Write:
+    65 0000004D B801000000              	mov rax,1		; Specify sys_write call
+    66 00000052 BF01000000              	mov rdi,1		; Specify File Descriptor 1: Standard output
+    67 00000057 48BE-                   	mov rsi,Buff		; Pass offset of the buffer
+    67 00000059 [0000000000000000] 
+    68 00000061 4889DA                  	mov rdx,rbx		; Pass the # of bytes of data in the buffer
+    69 00000064 0F05                    	syscall			; Make kernel call
+    70                                  
+    71 00000066 EB99                    	jmp read		; Loop back and load another buffer full
+    72                                  
+    73                                  ; All done! Let's end this party:
+    74                                  Done:
+    75 00000068 B83C000000              	mov rax,60		; Code for Exit Syscall
+    76 0000006D BF00000000              	mov rdi,0		; Return a code of zero	
+    77 00000072 0F05                    	syscall			; Make kernel call

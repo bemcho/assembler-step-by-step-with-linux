@@ -1,0 +1,16 @@
+     1                                  segment .bss
+     2                                  
+     3                                  section .data
+     4                                  
+     5                                  section .rodata
+     6                                  
+     7                                  segment .text
+     8                                  
+     9                                  global	_start
+    10                                  _start:
+    11                                  
+    12 00000000 90                          nop
+    13                                  ; Put your experiments between the two nops...
+    14                                  
+    15                                  ; Put your experiments between the two nops...
+    16 00000001 90                      	nop
