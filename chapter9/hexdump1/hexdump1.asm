@@ -57,9 +57,7 @@ Read:
 Scan:
 	xor rax,rax		; Clear eax to 0
 ; Here we calculate the offset into HexStr, which is the value in rcx X 3
-	mov rdx,rcx
 	lea rdx, [rcx*3]
-
 ; Copy the character counter into edx
 	
 
