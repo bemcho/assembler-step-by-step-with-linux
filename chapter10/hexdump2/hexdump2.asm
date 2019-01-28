@@ -13,7 +13,7 @@
 
 SECTION .bss			; Section containing uninitialized data
 
-	BUFFLEN EQU 10h
+	BUFFLEN EQU 32
 	Buff	resb BUFFLEN
 
 SECTION .data			; Section containing initialised data
@@ -26,9 +26,12 @@ SECTION .data			; Section containing initialised data
 ; Remember that if DumpLin is to be used separately, you must append an
 ; EOL before sending it to the Linux console.
 
-DumpLin:	db " 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 "
+DumpLin:	db " "
+DumpLin2:   times BUFFLEN db "00 "
 DUMPLEN		EQU $-DumpLin
-ASCLin:		db "|................|",10
+ASCLin:		db "|"
+ASCLin2:    times BUFFLEN db "."
+ASCLine3:   db "|",10
 ASCLEN		EQU $-ASCLin
 FULLLEN		EQU $-DumpLin
 
@@ -77,7 +80,7 @@ ClearLine:
 	push rcx
 	push rax 		; Save all caller's GP registers
 
-	mov rcx,15	; We're going to go 16 pokes, counting from 0
+	mov rcx,BUFFLEN-1	; We're going to go BUFFLEN pokes, counting from 0
 .poke:
     mov rax,0	; Tell DumpChar to poke a '0'
 	call DumpChar	; Insert the '0' into the hex dump string
@@ -226,6 +229,9 @@ Scan:
 	inc rcx			; Increment buffer pointer
 	cmp rcx,rbp		; Compare with # of chars in buffer
 	jb .modTest		; If we've processed all chars in buffer...
+
+	call PrintLine		; ...otherwise print the line
+	call ClearLine		; Clear hex dump line to 0's
 	call LoadBuff		; ...go fill the buffer again
 	cmp rbp,0		; If ebp=0, sys_read reached EOF on stdin
 
@@ -233,16 +239,16 @@ Scan:
 
 ; See if we're at the end of a block of 16 and need to display a line:
 .modTest:
-	test rsi,000000000000000Fh  	; Test 4 lowest bits in counter for 0
-
+	cmp rcx,BUFFLEN  	; Test 4 lowest bits in counter for 0
 	jnz Scan		; If counter is *not* modulo 16, loop back
+
 	call PrintLine		; ...otherwise print the line
 	call ClearLine		; Clear hex dump line to 0's
    	jmp Scan		; Continue scanning the buffer
 
 ; All done! Let's end this party:
 Done:
-	call PrintLine		; Print the "leftovers" line
+
 Exit:
 	mov rax,60		; Code for Exit Syscall
 	mov rdi,0		; Return a code of zero	
