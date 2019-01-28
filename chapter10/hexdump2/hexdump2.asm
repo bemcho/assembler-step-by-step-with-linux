@@ -13,7 +13,7 @@
 
 SECTION .bss			; Section containing uninitialized data
 
-	BUFFLEN EQU 10
+	BUFFLEN EQU 10h
 	Buff	resb BUFFLEN
 
 SECTION .data			; Section containing initialised data
@@ -74,15 +74,18 @@ SECTION .text			; Section containing code
 ;		calling DumpChar 16 times, passing it 0 each time.
 
 ClearLine:
-	push rdx
+	push rcx
 	push rax 		; Save all caller's GP registers
-	mov edx,15	; We're going to go 16 pokes, counting from 0
-.poke:	mov eax,0	; Tell DumpChar to poke a '0'
+
+	mov rcx,15	; We're going to go 16 pokes, counting from 0
+.poke:
+    mov rax,0	; Tell DumpChar to poke a '0'
 	call DumpChar	; Insert the '0' into the hex dump string
-	sub edx,1	; DEC doesn't affect CF!
+	sub rcx,1	; DEC doesn't affect CF!
 	jae .poke	; Loop back if EDX >= 0
+
 	pop rax
-	pop rdx		; Restore all caller's GP registers
+	pop rcx		; Restore all caller's GP registers
 	ret		; Go home
 
 
@@ -102,23 +105,26 @@ ClearLine:
 DumpChar:
 	push rbx		; Save caller's EBX
 	push rdi		; Save caller's EDI
+
 ; First we insert the input char into the ASCII portion of the dump line
-	mov bl,byte [DotXlat+eax]	; Translate nonprintables to '.'
-	mov byte [ASCLin+edx+1],bl	; Write to ASCII portion
+	mov bl,byte [DotXlat+rax]	; Translate nonprintables to '.'
+	mov byte [ASCLin+rcx+1],bl	; Write to ASCII portion
 ; Next we insert the hex equivalent of the input char in the hex portion
 ; of the hex dump line:
-	mov ebx,eax		; Save a second copy of the input char
-	lea edi,[edx*2+edx]	; Calc offset into line string (ECX X 3)
+	mov rbx,rax		; Save a second copy of the input char
+	lea rdi,[rcx*2+rcx]	; Calc offset into line string (ECX X 3)
 ; Look up low nybble character and insert it into the string:
-	and eax,0000000Fh	     ; Mask out all but the low nybble
-	mov al,byte [HexDigits+eax]  ; Look up the char equiv. of nybble
-	mov byte [DumpLin+edi+2],al  ; Write the char equiv. to line string
+	and rax,000000000000000Fh	     ; Mask out all but the low nybble
+	mov al,byte [HexDigits+rax]  ; Look up the char equiv. of nybble
+	mov byte [DumpLin+rdi+2],al  ; Write the char equiv. to line string
 ; Look up high nybble character and insert it into the string:
-	and ebx,000000F0h	; Mask out all the but second-lowest nybble
-	shr ebx,4		; Shift high 4 bits of byte into low 4 bits
-	mov bl,byte [HexDigits+ebx] ; Look up char equiv. of nybble
-	mov byte [DumpLin+edi+1],bl ; Write the char equiv. to line string
-;Done! Let's go home:
+	and rbx,00000000000000F0h	; Mask out all the but second-lowest nybble
+	shr rbx,4		; Shift high 4 bits of byte into low 4 bits
+	mov bl,byte [HexDigits+rbx] ; Look up char equiv. of nybble
+	mov byte [DumpLin+rdi+1],bl ; Write the char equiv. to line string
+
+								;Done! Let's go home:
+
 	pop rdi			; Restore caller's EDI
 	pop rbx			; Restore caller's EBX
 	ret			; Return to caller
@@ -136,17 +142,21 @@ DumpChar:
 
 PrintLine:
 	push rax		  ; Save all caller's GP registers
-	push rbx
-	push rcx
+	push rdi
+	push rsi
 	push rdx
-	mov eax,4	  ; Specify sys_write call
-	mov ebx,1	  ; Specify File Descriptor 1: Standard output
-	mov ecx,DumpLin	  ; Pass offset of line string
-	mov edx,FULLLEN	  ; Pass size of the line string
-	int 80h		  ; Make kernel call to display line string
+    push rcx
+
+	mov rax,1	  ; Specify sys_write call
+	mov rdi,1	  ; Specify File Descriptor 1: Standard output
+	mov rsi,DumpLin	  ; Pass offset of line string
+	mov rdx,FULLLEN	  ; Pass size of the line string
+	syscall		  ; Make kernel call to display line string
+
+    pop rcx
 	pop rdx		  ; Restore all caller's GP registers
-	pop rcx
-	pop rbx
+	pop rsi
+	pop rdi
 	pop rax
 
 	ret		  ; Return to caller
@@ -167,19 +177,24 @@ PrintLine:
 ;		Less than 0 in EBP on return indicates some kind of error.
 
 LoadBuff:
-	push rax	  ; Save caller's EAX
-	push rbx	  ; Save caller's EBX
-	push rdx	  ; Save caller's EDX
-	mov eax,3	  ; Specify sys_read call
-	mov ebx,0	  ; Specify File Descriptor 0: Standard Input
-	mov ecx,Buff	  ; Pass offset of the buffer to read to
-	mov edx,BUFFLEN	  ; Pass number of bytes to read at one pass
-	int 80h		  ; Call sys_read to fill the buffer
-	mov ebp,eax	  ; Save # of bytes read from file for later
-	xor ecx,ecx	  ; Clear buffer pointer ECX to 0
-	pop rdx		  ; Restore caller's EDX
-	pop rbx		  ; Restore caller's EBX
-	pop rax		  ; Restore caller's EAX
+	push rax	  ; Save caller's RAX
+	push rdi	  ; Save caller's RDI
+	push rsi
+    push rdx      ; Save caller's RDX
+
+	mov rax,0	  ; Specify sys_read call
+	mov rdi,0	  ; Specify File Descriptor 0: Standard Input
+	mov rsi,Buff	  ; Pass offset of the buffer to read to
+	mov rdx,BUFFLEN	  ; Pass number of bytes to read at one pass
+	syscall		  ; Call sys_read to fill the buffer
+
+	mov rbp,rax	  ; Save # of bytes read from file for later
+	xor rcx,rcx	  ; Clear buffer pointer RCX to 0
+
+	pop rdx		  ; Restore caller's RDX
+	pop rsi
+	pop rdi		  ; Restore caller's RBX
+	pop rax		  ; Restore caller's RAX
 	ret		  ; And return to caller
 
 
@@ -193,39 +208,42 @@ _start:
 	nop
 
 ; Whatever initialization needs doing before the loop scan starts is here:
-	xor esi,esi		; Clear total byte counter to 0
+	xor rsi,rsi		; Clear total byte counter to 0
 	call LoadBuff		; Read first buffer of data from stdin
-	cmp ebp,0		; If ebp=0, sys_read reached EOF on stdin
+	cmp rbp,0		; If ebp=0, sys_read reached EOF on stdin
 	jbe Exit
 
 ; Go through the buffer and convert binary byte values to hex digits:
 Scan:
-	xor eax,eax		; Clear EAX to 0
-	mov al,byte[Buff+ecx]	; Get a byte from the buffer into AL
-	mov edx,esi		; Copy total counter into EDX
-	and edx,0000000Fh	; Mask out lowest 4 bits of char counter
+	xor rax,rax		; Clear EAX to 0
+	mov al,byte[Buff+rcx]	; Get a byte from the buffer into AL
+	mov rdx,rsi		; Copy total counter into EDX
+
 	call DumpChar		; Call the char poke procedure
 
 ; Bump the buffer pointer to the next character and see if buffer's done:
-	inc esi			; Increment total chars processed counter
-	inc ecx			; Increment buffer pointer
-	cmp ecx,ebp		; Compare with # of chars in buffer
+	inc rsi			; Increment total chars processed counter
+	inc rcx			; Increment buffer pointer
+	cmp rcx,rbp		; Compare with # of chars in buffer
 	jb .modTest		; If we've processed all chars in buffer...
 	call LoadBuff		; ...go fill the buffer again
-	cmp ebp,0		; If ebp=0, sys_read reached EOF on stdin
+	cmp rbp,0		; If ebp=0, sys_read reached EOF on stdin
+
 	jbe Done		; If we got EOF, we're done
 
 ; See if we're at the end of a block of 16 and need to display a line:
 .modTest:
-	test esi,0000000Fh  	; Test 4 lowest bits in counter for 0
+	test rsi,000000000000000Fh  	; Test 4 lowest bits in counter for 0
+
 	jnz Scan		; If counter is *not* modulo 16, loop back
 	call PrintLine		; ...otherwise print the line
 	call ClearLine		; Clear hex dump line to 0's
-	jmp Scan		; Continue scanning the buffer
+   	jmp Scan		; Continue scanning the buffer
 
 ; All done! Let's end this party:
 Done:
 	call PrintLine		; Print the "leftovers" line
-Exit:	mov eax,1		; Code for Exit Syscall
-	mov ebx,0		; Return a code of zero	
-	int 80H			; Make kernel call
+Exit:
+	mov rax,60		; Code for Exit Syscall
+	mov rdi,0		; Return a code of zero	
+	syscall		; Make kernel call
